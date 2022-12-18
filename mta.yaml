@@ -23,6 +23,7 @@ modules:
           srv-url: ${default-url}
     requires:
       - name: tccap-db
+      - name: tccap-auth
 
   - name: tccap-db-deployer
     type: hdb
@@ -32,9 +33,34 @@ modules:
     requires:
       - name: tccap-db
 
+  - name: tccap
+    type: approuter.nodejs
+    path: app/ # from cds.env.folders. Consider also cds.env.build.target -> gen/app
+    parameters:
+      keep-existing-routes: true
+      disk-quota: 256M
+      memory: 256M
+    requires:
+      - name: srv-api
+        group: destinations
+        properties:
+          name: srv-api # must be used in xs-app.json as well
+          url: ~{srv-url}
+          forwardAuthToken: true
+      - name: tccap-auth
+
 resources:
   - name: tccap-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
       service-plan: hdi-shared
+  - name: tccap-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: tccap-${org}-${space}
+        tenant-mode: dedicated
